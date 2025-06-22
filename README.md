@@ -268,3 +268,139 @@ public void testGetItemInfo() throws Exception {
 
 ---
 
+
+ **complete unit test example** for a **Spring Boot controller** with **CRUD operations**, using **ResponseEntity**, **MockMvc**, **@WebMvcTest**, and **@MockBean**.
+
+---
+
+### ✅ Sample: `ItemController` with CRUD Operations
+
+```java
+@RestController
+@RequestMapping("/api/items")
+public class ItemController {
+
+    private final ItemService itemService;
+
+    public ItemController(ItemService itemService) {
+        this.itemService = itemService;
+    }
+
+    @PostMapping
+    public ResponseEntity<Item> createItem(@RequestBody Item item) {
+        Item created = itemService.createItem(item);
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Item> getItemById(@PathVariable Long id) {
+        Item item = itemService.getItemById(id);
+        return ResponseEntity.ok(item);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Item> updateItem(@PathVariable Long id, @RequestBody Item item) {
+        Item updated = itemService.updateItem(id, item);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
+        itemService.deleteItem(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+---
+
+### ✅ Sample `Item` Model
+
+```java
+public class Item {
+    private Long id;
+    private String name;
+
+    // Constructors, Getters, Setters
+}
+```
+
+---
+
+### ✅ Unit Test for `ItemController`
+
+```java
+@WebMvcTest(ItemController.class)
+public class ItemControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private ItemService itemService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    public void testCreateItem() throws Exception {
+        Item item = new Item(1L, "Phone");
+        Mockito.when(itemService.createItem(Mockito.any())).thenReturn(item);
+
+        mockMvc.perform(post("/api/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.name").value("Phone"));
+    }
+
+    @Test
+    public void testGetItemById() throws Exception {
+        Item item = new Item(1L, "Laptop");
+        Mockito.when(itemService.getItemById(1L)).thenReturn(item);
+
+        mockMvc.perform(get("/api/items/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.name").value("Laptop"));
+    }
+
+    @Test
+    public void testUpdateItem() throws Exception {
+        Item updatedItem = new Item(1L, "Tablet");
+        Mockito.when(itemService.updateItem(Mockito.eq(1L), Mockito.any())).thenReturn(updatedItem);
+
+        mockMvc.perform(put("/api/items/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updatedItem)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.name").value("Tablet"));
+    }
+
+    @Test
+    public void testDeleteItem() throws Exception {
+        Mockito.doNothing().when(itemService).deleteItem(1L);
+
+        mockMvc.perform(delete("/api/items/1"))
+                .andExpect(status().isNoContent());
+    }
+}
+```
+
+---
+
+### 🧪 Key Points:
+
+| Part                  | Explanation                            |
+| --------------------- | -------------------------------------- |
+| `@WebMvcTest`         | Loads only controller layer            |
+| `@MockBean`           | Mocks service layer dependency         |
+| `MockMvc`             | Simulates HTTP requests                |
+| `jsonPath("$.field")` | Checks JSON field values               |
+| `ObjectMapper`        | Converts Java objects to JSON and back |
+
+---
+
+
+
