@@ -958,3 +958,137 @@ class ItemControllerAdvancedTest {
 ---
 
 
+**Integration Testing**
+
+Let's now **convert everything into a full integration test** using `@SpringBootTest`, covering the **controller, service, and global exception handler**, with **real HTTP request/response** using `TestRestTemplate`.
+
+---
+
+## ✅ Step-by-Step: Spring Boot Integration Test
+
+---
+
+### ✅ 1. **Enable Integration Test with `@SpringBootTest`**
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
+public class ItemControllerIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ItemService itemService; // real service bean
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setup() {
+        itemService.createItem(new Item(100L, "Keyboard"));
+    }
+
+    @Test
+    void testGetItemById_success() throws Exception {
+        mockMvc.perform(get("/api/items/100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Keyboard"));
+    }
+
+    @Test
+    void testGetItemById_notFound_shouldInvokeGlobalExceptionHandler() throws Exception {
+        mockMvc.perform(get("/api/items/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Item with ID 999 not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"));
+    }
+
+    @Test
+    void testCreateItem_success() throws Exception {
+        Item newItem = new Item(200L, "Monitor");
+
+        mockMvc.perform(post("/api/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newItem)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(200L))
+                .andExpect(jsonPath("$.name").value("Monitor"));
+    }
+
+    @Test
+    void testDeleteItem_success() throws Exception {
+        itemService.createItem(new Item(300L, "Mouse"));
+
+        mockMvc.perform(delete("/api/items/300"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void testDeleteItem_notFound_shouldReturn404() throws Exception {
+        mockMvc.perform(delete("/api/items/9876"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Item with ID 9876 not found"));
+    }
+}
+```
+
+---
+
+### ✅ 2. Update `ItemServiceImpl` to throw exception on not found
+
+This is important so your `@ControllerAdvice` is triggered during integration tests:
+
+```java
+@Override
+public Optional<Item> getItemById(Long id) {
+    return items.stream()
+            .filter(i -> i.getId().equals(id))
+            .findFirst();
+}
+
+@Override
+public Optional<Item> updateItem(Long id, Item item) {
+    return getItemById(id).map(existing -> {
+        existing.setName(item.getName());
+        return existing;
+    });
+}
+
+@Override
+public boolean deleteItem(Long id) {
+    boolean removed = items.removeIf(i -> i.getId().equals(id));
+    if (!removed) {
+        throw new ItemNotFoundException("Item with ID " + id + " not found");
+    }
+    return true;
+}
+```
+
+---
+
+### ✅ 3. Add Global Exception Handler (from before)
+
+Keep your `@RestControllerAdvice` active—it’ll automatically handle exceptions in integration tests.
+
+---
+
+### ✅ Final Tips
+
+| Annotation               | Purpose                                   |
+| ------------------------ | ----------------------------------------- |
+| `@SpringBootTest`        | Boots full application context            |
+| `@AutoConfigureMockMvc`  | Auto-wires `MockMvc` for full-stack tests |
+| `@BeforeEach`            | Setup preconditions for tests             |
+| `MockMvc` + `jsonPath()` | Assert HTTP status, body, structure       |
+
+---
+
+Would you like:
+
+* 📦 To replace in-memory List with real DB using H2 + JPA?
+* 🧪 Test validation errors with `@Valid` and `@ExceptionHandler(MethodArgumentNotValidException)`?
+
+Let me know how you'd like to extend this.
+
