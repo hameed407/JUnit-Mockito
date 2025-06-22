@@ -1,4 +1,4 @@
-**3 main ways to test a Spring Boot application** in a clean, complete format. Here's the **revised and complete version** with that section added:
+**3 main ways to test a Spring Boot application** 
 
 ---
 
@@ -90,12 +90,6 @@ This guide gives you the **fundamentals, strategies, and tools** to effectively 
 Browse this repo for practical examples and real-world testing layers.
 
 ---
-
-Let me know if you want this in Markdown for GitHub directly.
-
-
-
-Here's a clean and well-formatted version of your Spring Boot + JUnit/Mockito tutorial notes for your GitHub README or repo documentation:
 
 ---
 
