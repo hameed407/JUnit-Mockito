@@ -447,7 +447,7 @@ public class Item {
 
 ---
 
-Sure! Below is a simple example of **ItemService interface**, its **implementation**, and **Mockito unit tests** for the service using Java 8 features like `Optional` and lambdas.
+Below is a simple example of **ItemService interface**, its **implementation**, and **Mockito unit tests** for the service using Java 8 features like `Optional` and lambdas.
 
 ---
 
@@ -615,4 +615,346 @@ public class ItemServiceImplTest {
 
 ---
 
+**level up your testing** by using **JUnit 5 advanced features** like:
+
+* `@BeforeEach`, `@AfterEach`, `@BeforeAll`, `@AfterAll`
+* Assertions: `assertEquals`, `assertTrue`, `assertNull`, `assertThrows`
+* `@Nested` test classes
+* `@ParameterizedTest` with different input values
+
+Let’s go step-by-step using your `ItemServiceImpl` example so you see it all in action.
+
 ---
+
+## ✅ Full Example: Advanced JUnit 5 Testing for `ItemServiceImpl`
+
+```java
+import org.junit.jupiter.api.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Optional;
+import java.util.stream.Stream;
+
+public class ItemServiceImplTest {
+
+    private ItemServiceImpl itemService;
+
+    @BeforeAll
+    static void setupAll() {
+        System.out.println("🔧 Setup before all tests");
+    }
+
+    @AfterAll
+    static void tearDownAll() {
+        System.out.println("🧹 Cleanup after all tests");
+    }
+
+    @BeforeEach
+    void setup() {
+        itemService = new ItemServiceImpl();
+        System.out.println("✅ Setup before each test");
+    }
+
+    @AfterEach
+    void tearDown() {
+        System.out.println("❌ Tear down after each test");
+    }
+
+    @Test
+    void testCreateItem() {
+        Item item = new Item(1L, "Phone");
+        Item created = itemService.createItem(item);
+
+        assertEquals(item, created);
+        assertTrue(itemService.getAllItems().contains(item));
+    }
+
+    @Test
+    void testGetItemById_returnsItem() {
+        itemService.createItem(new Item(2L, "Tablet"));
+        Optional<Item> result = itemService.getItemById(2L);
+
+        assertTrue(result.isPresent());
+        assertEquals("Tablet", result.get().getName());
+    }
+
+    @Test
+    void testGetItemById_notFound() {
+        Optional<Item> result = itemService.getItemById(999L);
+        assertTrue(result.isEmpty());
+        assertNull(result.orElse(null));
+    }
+
+    @Test
+    void testUpdateItem_throwsExceptionIfNull() {
+        assertThrows(NullPointerException.class, () -> {
+            itemService.updateItem(null, null);
+        });
+    }
+
+    @Nested
+    class DeleteTests {
+
+        @Test
+        void testDeleteItem_exists() {
+            itemService.createItem(new Item(3L, "Laptop"));
+            boolean deleted = itemService.deleteItem(3L);
+
+            assertTrue(deleted);
+        }
+
+        @Test
+        void testDeleteItem_notExists() {
+            boolean deleted = itemService.deleteItem(999L);
+            assertFalse(deleted);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideItems")
+    void testParameterizedCreateItem(Item item) {
+        Item created = itemService.createItem(item);
+        assertNotNull(created);
+        assertEquals(item.getName(), created.getName());
+    }
+
+    static Stream<Item> provideItems() {
+        return Stream.of(
+                new Item(101L, "Mouse"),
+                new Item(102L, "Keyboard"),
+                new Item(103L, "Monitor")
+        );
+    }
+}
+```
+
+---
+
+## 🔍 Feature Breakdown:
+
+| Feature                                                                                    | Purpose                                            |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| `@BeforeAll` / `@AfterAll`                                                                 | Run once before/after all tests (must be `static`) |
+| `@BeforeEach` / `@AfterEach`                                                               | Run before/after each test                         |
+| `@Test`                                                                                    | Standard test case                                 |
+| `@Nested`                                                                                  | Group related tests for better readability         |
+| `@ParameterizedTest`                                                                       | Run same test logic with different input data      |
+| `@MethodSource`                                                                            | Feeds parameters from a method                     |
+| `assertEquals`, `assertTrue`, `assertFalse`, `assertNull`, `assertNotNull`, `assertThrows` | Assertions                                         |
+
+---
+
+### ✅ Requirements:
+
+* **JUnit 5 (Jupiter)** in `pom.xml` or `build.gradle`
+* For `@MethodSource`: method must be `static` or in the same test class
+
+---
+Here's a short explanation:
+
+> 🔹 **`@MethodSource`** needs the data-provider method to be:
+
+* `static` ✅ **if it's in a different class**
+* Not static ❌ \*\*only if it's in the ***same test class***
+
+---
+
+### ✅ Example in **same class** (non-static works):
+
+```java
+@ParameterizedTest
+@MethodSource("itemProvider")
+void testItem(Item item) {
+    // test logic
+}
+
+Stream<Item> itemProvider() {
+    return Stream.of(new Item(1L, "A"), new Item(2L, "B"));
+}
+```
+
+---
+
+### ✅ Example from **another class** (must be static):
+
+```java
+@ParameterizedTest
+@MethodSource("com.example.TestData#itemProvider")
+void testItem(Item item) {
+    // test logic
+}
+```
+
+```java
+// In TestData.java
+public class TestData {
+    public static Stream<Item> itemProvider() {
+        return Stream.of(new Item(1L, "A"), new Item(2L, "B"));
+    }
+}
+```
+
+In short:
+
+* 🔹 **Same class?** → static or non-static method is fine
+* 🔹 **Other class?** → method **must be static**
+
+
+---
+
+Here's how to apply **advanced JUnit 5 features** like `@BeforeEach`, `@AfterEach`, `@Nested`, `@ParameterizedTest`, `@MethodSource`, and all key **assertions** to **controller unit testing** using **MockMvc** and **Mockito**.
+
+We’ll base it on your `ItemController` example.
+
+---
+
+## ✅ Advanced Controller Test with MockMvc & JUnit 5 Features
+
+```java
+@WebMvcTest(ItemController.class)
+class ItemControllerAdvancedTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private ItemService itemService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeAll
+    static void beforeAllTests() {
+        System.out.println("🌐 Starting ItemController tests...");
+    }
+
+    @AfterAll
+    static void afterAllTests() {
+        System.out.println("🧹 Finished all controller tests.");
+    }
+
+    @BeforeEach
+    void setupEach() {
+        System.out.println("🚀 Before each test");
+    }
+
+    @AfterEach
+    void tearDownEach() {
+        System.out.println("🛑 After each test");
+    }
+
+    @Test
+    void testGetItemById_found() throws Exception {
+        Item item = new Item(1L, "Monitor");
+        Mockito.when(itemService.getItemById(1L)).thenReturn(Optional.of(item));
+
+        mockMvc.perform(get("/api/items/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.name").value("Monitor"));
+    }
+
+    @Test
+    void testGetItemById_notFound() throws Exception {
+        Mockito.when(itemService.getItemById(99L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/items/99"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testCreateItem_asserts() throws Exception {
+        Item item = new Item(10L, "Phone");
+        Mockito.when(itemService.createItem(Mockito.any())).thenReturn(item);
+
+        mockMvc.perform(post("/api/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Phone"));
+
+        assertNotNull(item.getId());
+        assertEquals("Phone", item.getName());
+        assertTrue(item.getId() > 0);
+    }
+
+    @Nested
+    class UpdateItemTests {
+
+        @Test
+        void testUpdateItem_success() throws Exception {
+            Item updated = new Item(2L, "Updated Laptop");
+            Mockito.when(itemService.updateItem(Mockito.eq(2L), Mockito.any()))
+                   .thenReturn(Optional.of(updated));
+
+            mockMvc.perform(put("/api/items/2")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(updated)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name").value("Updated Laptop"));
+        }
+
+        @Test
+        void testUpdateItem_notFound() throws Exception {
+            Item updated = new Item(999L, "Ghost");
+            Mockito.when(itemService.updateItem(Mockito.eq(999L), Mockito.any()))
+                   .thenReturn(Optional.empty());
+
+            mockMvc.perform(put("/api/items/999")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(updated)))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @ParameterizedTest(name = "Delete item with ID = {0}")
+    @MethodSource("provideIdsForDeletion")
+    void testDeleteItem(Long id, boolean expectedResult) throws Exception {
+        Mockito.when(itemService.deleteItem(id)).thenReturn(expectedResult);
+
+        mockMvc.perform(delete("/api/items/" + id))
+                .andExpect(status().is(expectedResult ? 204 : 404));
+    }
+
+    static Stream<Arguments> provideIdsForDeletion() {
+        return Stream.of(
+                Arguments.of(1L, true),
+                Arguments.of(2L, true),
+                Arguments.of(999L, false)
+        );
+    }
+
+    @Test
+    void testCreateItem_throwException() throws Exception {
+        Mockito.when(itemService.createItem(Mockito.any()))
+               .thenThrow(new RuntimeException("Internal error"));
+
+        mockMvc.perform(post("/api/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Item(null, "Error"))))
+                .andExpect(status().isInternalServerError()); // Assuming global exception handler
+    }
+}
+```
+
+---
+
+## 🔍 What This Test Class Demonstrates:
+
+| Feature                                       | Usage Description                  |
+| --------------------------------------------- | ---------------------------------- |
+| `@WebMvcTest`                                 | Loads controller layer only        |
+| `@BeforeAll`, `@AfterAll`                     | Logs before/after all tests        |
+| `@BeforeEach`, `@AfterEach`                   | Logs before/after each test        |
+| `@Test`                                       | Regular unit test                  |
+| `@Nested`                                     | Organizes related tests            |
+| `@ParameterizedTest`                          | Repeats test with different inputs |
+| `@MethodSource`                               | Provides custom test data          |
+| `assertEquals`, `assertTrue`, `assertNotNull` | Classic assertions                 |
+| `assertThrows` (indirectly tested)            | Exception test case                |
+| `jsonPath()`                                  | Validates JSON response            |
+| `Mockito.when(...)`                           | Mocks service methods              |
+| `.andExpect(...)`                             | Verifies response status/body      |
+
+---
+
+
