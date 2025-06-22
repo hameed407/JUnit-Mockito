@@ -269,11 +269,15 @@ public void testGetItemInfo() throws Exception {
 ---
 
 
- **complete unit test example** for a **Spring Boot controller** with **CRUD operations**, using **ResponseEntity**, **MockMvc**, **@WebMvcTest**, and **@MockBean**.
+ Below is a full example including:
+
+* `ItemService` + `ItemServiceImpl` (from before)
+* `ItemController` (with CRUD using ResponseEntity)
+* **Mockito unit tests for the controller**, mocking the service layer
 
 ---
 
-### ✅ Sample: `ItemController` with CRUD Operations
+## 1. `ItemController` with CRUD endpoints
 
 ```java
 @RestController
@@ -294,40 +298,33 @@ public class ItemController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Item> getItemById(@PathVariable Long id) {
-        Item item = itemService.getItemById(id);
-        return ResponseEntity.ok(item);
+        return itemService.getItemById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Item> updateItem(@PathVariable Long id, @RequestBody Item item) {
-        Item updated = itemService.updateItem(id, item);
-        return ResponseEntity.ok(updated);
+        return itemService.updateItem(id, item)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
-        itemService.deleteItem(id);
-        return ResponseEntity.noContent().build();
+        boolean deleted = itemService.deleteItem(id);
+        if (deleted) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
 ```
 
 ---
 
-### ✅ Sample `Item` Model
-
-```java
-public class Item {
-    private Long id;
-    private String name;
-
-    // Constructors, Getters, Setters
-}
-```
-
----
-
-### ✅ Unit Test for `ItemController`
+## 2. Mockito Unit Tests for `ItemController`
 
 ```java
 @WebMvcTest(ItemController.class)
@@ -355,9 +352,9 @@ public class ItemControllerTest {
     }
 
     @Test
-    public void testGetItemById() throws Exception {
+    public void testGetItemById_found() throws Exception {
         Item item = new Item(1L, "Laptop");
-        Mockito.when(itemService.getItemById(1L)).thenReturn(item);
+        Mockito.when(itemService.getItemById(1L)).thenReturn(Optional.of(item));
 
         mockMvc.perform(get("/api/items/1"))
                 .andExpect(status().isOk())
@@ -366,9 +363,17 @@ public class ItemControllerTest {
     }
 
     @Test
-    public void testUpdateItem() throws Exception {
+    public void testGetItemById_notFound() throws Exception {
+        Mockito.when(itemService.getItemById(1L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/items/1"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void testUpdateItem_found() throws Exception {
         Item updatedItem = new Item(1L, "Tablet");
-        Mockito.when(itemService.updateItem(Mockito.eq(1L), Mockito.any())).thenReturn(updatedItem);
+        Mockito.when(itemService.updateItem(Mockito.eq(1L), Mockito.any())).thenReturn(Optional.of(updatedItem));
 
         mockMvc.perform(put("/api/items/1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -379,28 +384,235 @@ public class ItemControllerTest {
     }
 
     @Test
-    public void testDeleteItem() throws Exception {
-        Mockito.doNothing().when(itemService).deleteItem(1L);
+    public void testUpdateItem_notFound() throws Exception {
+        Item updatedItem = new Item(1L, "Tablet");
+        Mockito.when(itemService.updateItem(Mockito.eq(1L), Mockito.any())).thenReturn(Optional.empty());
+
+        mockMvc.perform(put("/api/items/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updatedItem)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void testDeleteItem_found() throws Exception {
+        Mockito.when(itemService.deleteItem(1L)).thenReturn(true);
 
         mockMvc.perform(delete("/api/items/1"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    public void testDeleteItem_notFound() throws Exception {
+        Mockito.when(itemService.deleteItem(1L)).thenReturn(false);
+
+        mockMvc.perform(delete("/api/items/1"))
+                .andExpect(status().isNotFound());
+    }
+}
+```
+
+---
+ If you're using annotations like **Lombok** to reduce boilerplate in your `Item` class, here’s how you can rewrite it with Lombok annotations:
+
+```java
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data               // Generates getters, setters, toString, equals, and hashCode
+@NoArgsConstructor  // Generates no-arg constructor
+@AllArgsConstructor // Generates all-args constructor
+public class Item {
+    private Long id;
+    private String name;
+}
+```
+
+---
+
+### What you get with Lombok annotations:
+
+* `@Data` bundles:
+
+  * Getters/setters for all fields
+  * `toString()`
+  * `equals()` and `hashCode()`
+* `@NoArgsConstructor` adds a default constructor
+* `@AllArgsConstructor` adds a constructor with all fields
+
+---
+
+**Make sure** you have Lombok added as a dependency in your `pom.xml` or `build.gradle` and your IDE supports it.
+
+---
+
+Sure! Below is a simple example of **ItemService interface**, its **implementation**, and **Mockito unit tests** for the service using Java 8 features like `Optional` and lambdas.
+
+---
+
+### 1. **ItemService Interface**
+
+```java
+import java.util.List;
+import java.util.Optional;
+
+public interface ItemService {
+
+    Item createItem(Item item);
+
+    Optional<Item> getItemById(Long id);
+
+    List<Item> getAllItems();
+
+    Optional<Item> updateItem(Long id, Item item);
+
+    boolean deleteItem(Long id);
+}
+```
+
+---
+
+### 2. **ItemServiceImpl Class**
+
+```java
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class ItemServiceImpl implements ItemService {
+
+    private final List<Item> items = new ArrayList<>();
+
+    @Override
+    public Item createItem(Item item) {
+        items.add(item);
+        return item;
+    }
+
+    @Override
+    public Optional<Item> getItemById(Long id) {
+        return items.stream()
+                .filter(i -> i.getId().equals(id))
+                .findFirst();
+    }
+
+    @Override
+    public List<Item> getAllItems() {
+        return new ArrayList<>(items);
+    }
+
+    @Override
+    public Optional<Item> updateItem(Long id, Item item) {
+        return getItemById(id).map(existingItem -> {
+            existingItem.setName(item.getName());
+            return existingItem;
+        });
+    }
+
+    @Override
+    public boolean deleteItem(Long id) {
+        return items.removeIf(i -> i.getId().equals(id));
     }
 }
 ```
 
 ---
 
-### 🧪 Key Points:
+### 3. **Mockito Unit Tests for ItemServiceImpl**
 
-| Part                  | Explanation                            |
-| --------------------- | -------------------------------------- |
-| `@WebMvcTest`         | Loads only controller layer            |
-| `@MockBean`           | Mocks service layer dependency         |
-| `MockMvc`             | Simulates HTTP requests                |
-| `jsonPath("$.field")` | Checks JSON field values               |
-| `ObjectMapper`        | Converts Java objects to JSON and back |
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class ItemServiceImplTest {
+
+    private ItemServiceImpl itemService;
+
+    @BeforeEach
+    public void setUp() {
+        itemService = new ItemServiceImpl();
+    }
+
+    @Test
+    public void testCreateItem() {
+        Item item = new Item(1L, "Phone");
+        Item created = itemService.createItem(item);
+        assertEquals(item, created);
+        assertTrue(itemService.getAllItems().contains(item));
+    }
+
+    @Test
+    public void testGetItemById_found() {
+        Item item = new Item(2L, "Laptop");
+        itemService.createItem(item);
+
+        Optional<Item> found = itemService.getItemById(2L);
+        assertTrue(found.isPresent());
+        assertEquals("Laptop", found.get().getName());
+    }
+
+    @Test
+    public void testGetItemById_notFound() {
+        Optional<Item> found = itemService.getItemById(999L);
+        assertFalse(found.isPresent());
+    }
+
+    @Test
+    public void testUpdateItem_found() {
+        Item item = new Item(3L, "Tablet");
+        itemService.createItem(item);
+
+        Item updateInfo = new Item(null, "Updated Tablet");
+        Optional<Item> updated = itemService.updateItem(3L, updateInfo);
+
+        assertTrue(updated.isPresent());
+        assertEquals("Updated Tablet", updated.get().getName());
+    }
+
+    @Test
+    public void testUpdateItem_notFound() {
+        Item updateInfo = new Item(null, "Updated Tablet");
+        Optional<Item> updated = itemService.updateItem(999L, updateInfo);
+        assertFalse(updated.isPresent());
+    }
+
+    @Test
+    public void testDeleteItem_found() {
+        Item item = new Item(4L, "Monitor");
+        itemService.createItem(item);
+
+        boolean deleted = itemService.deleteItem(4L);
+        assertTrue(deleted);
+        assertFalse(itemService.getItemById(4L).isPresent());
+    }
+
+    @Test
+    public void testDeleteItem_notFound() {
+        boolean deleted = itemService.deleteItem(999L);
+        assertFalse(deleted);
+    }
+}
+```
 
 ---
 
+---
 
+### Summary:
 
+* Service methods return `Optional<Item>` for safe null handling.
+* Java 8 Streams used to find and filter items.
+* Mockito is not needed here since this is testing a simple concrete class without dependencies.
+* You can easily mock this service when testing controllers.
+
+---
+
+---
