@@ -177,4 +177,3 @@ public void testGetItemInfo() throws Exception {
 
 ---
 
-Let me know if you'd like a Markdown file version or want to continue with the **Service layer testing** next.
