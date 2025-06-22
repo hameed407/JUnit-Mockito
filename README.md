@@ -1085,10 +1085,219 @@ Keep your `@RestControllerAdvice` active—it’ll automatically handle exceptio
 
 ---
 
-Would you like:
+Perfect! Let’s now upgrade your project with:
 
-* 📦 To replace in-memory List with real DB using H2 + JPA?
-* 🧪 Test validation errors with `@Valid` and `@ExceptionHandler(MethodArgumentNotValidException)`?
+---
 
-Let me know how you'd like to extend this.
+## ✅ **1. H2 + Spring Data JPA Integration**
+
+### ✅ 2. `@Valid` Validation with Global Exception Handling
+
+### ✅ 3. Integration Tests with Validation and H2
+
+---
+
+## ✅ STEP 1: Add H2 + Spring Data JPA
+
+### ✅ `pom.xml` dependencies:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+---
+
+## ✅ STEP 2: Add Repository
+
+```java
+public interface ItemRepository extends JpaRepository<Item, Long> {
+}
+```
+
+---
+
+## ✅ STEP 3: Update Entity with JPA + Validation
+
+```java
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Item {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "Name is required")
+    private String name;
+}
+```
+
+---
+
+## ✅ STEP 4: Update Service Layer
+
+```java
+@Service
+public class ItemServiceImpl implements ItemService {
+
+    private final ItemRepository repo;
+
+    public ItemServiceImpl(ItemRepository repo) {
+        this.repo = repo;
+    }
+
+    @Override
+    public Item createItem(Item item) {
+        return repo.save(item);
+    }
+
+    @Override
+    public Optional<Item> getItemById(Long id) {
+        return repo.findById(id);
+    }
+
+    @Override
+    public List<Item> getAllItems() {
+        return repo.findAll();
+    }
+
+    @Override
+    public Optional<Item> updateItem(Long id, Item item) {
+        return repo.findById(id).map(existing -> {
+            existing.setName(item.getName());
+            return repo.save(existing);
+        });
+    }
+
+    @Override
+    public boolean deleteItem(Long id) {
+        if (!repo.existsById(id)) {
+            throw new ItemNotFoundException("Item with ID " + id + " not found");
+        }
+        repo.deleteById(id);
+        return true;
+    }
+}
+```
+
+---
+
+## ✅ STEP 5: Update Controller to Use `@Valid`
+
+```java
+@PostMapping
+public ResponseEntity<Item> createItem(@Valid @RequestBody Item item) {
+    Item created = itemService.createItem(item);
+    return new ResponseEntity<>(created, HttpStatus.CREATED);
+}
+```
+
+---
+
+## ✅ STEP 6: Update `GlobalExceptionHandler` for Validation
+
+```java
+@ExceptionHandler(MethodArgumentNotValidException.class)
+public ResponseEntity<Object> handleValidationErrors(MethodArgumentNotValidException ex) {
+    Map<String, String> errors = new HashMap<>();
+    ex.getBindingResult().getFieldErrors().forEach(err ->
+        errors.put(err.getField(), err.getDefaultMessage())
+    );
+
+    Map<String, Object> body = new HashMap<>();
+    body.put("timestamp", LocalDateTime.now());
+    body.put("status", 400);
+    body.put("error", "Bad Request");
+    body.put("message", "Validation failed");
+    body.put("errors", errors);
+
+    return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+}
+```
+
+---
+
+## ✅ STEP 7: Integration Test (H2 + Validation + Controller)
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+class ItemControllerIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    @Order(1)
+    void testCreateItem_success() throws Exception {
+        Item item = new Item(null, "Smart Watch");
+
+        mockMvc.perform(post("/api/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists());
+    }
+
+    @Test
+    @Order(2)
+    void testCreateItem_validationFailure() throws Exception {
+        Item item = new Item(null, ""); // empty name
+
+        mockMvc.perform(post("/api/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(item)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.name").value("Name is required"));
+    }
+
+    @Test
+    @Order(3)
+    void testGetItemById_notFound() throws Exception {
+        mockMvc.perform(get("/api/items/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Item with ID 999 not found"));
+    }
+}
+```
+
+---
+
+## 🎉 What You Now Have:
+
+✅ Real DB (H2)
+✅ JPA Repository
+✅ Entity-level validation (`@NotBlank`)
+✅ `@Valid` request validation in controller
+✅ Global handler for:
+
+* Generic exceptions
+* Custom exceptions
+* Validation errors
+  ✅ Full-stack integration tests with real persistence + error checks
+
+---
+
+
+
+
 
