@@ -1,9 +1,12 @@
-Here’s **Step 01: Creating a Hello World Controller** for your Spring Boot + JUnit/Mockito repo:
+Here's a clean and well-formatted version of your Spring Boot + JUnit/Mockito tutorial notes for your GitHub README or repo documentation:
 
 ---
 
+## 🧪 Step-by-Step: Testing Spring Boot with JUnit + Mockito
 
-1. **Create a simple controller class:**
+### ✅ Step 01: Create a Basic Hello World Controller
+
+#### 🧩 1. Create a Controller
 
 ```java
 @RestController
@@ -17,10 +20,20 @@ public class HelloController {
 }
 ```
 
-2. **Run the application and access:**
-   `http://localhost:8080/api/hello` → You should see `"Hello, World!"`.
+#### 🔗 2. Run the App
 
-3. **Add a basic unit test using JUnit:**
+Visit: `http://localhost:8080/api/hello`
+Output:
+
+```
+Hello, World!
+```
+
+---
+
+### ✅ Step 02: Unit Test with `MockMvc`
+
+#### 🧪 1. Test HelloController
 
 ```java
 @WebMvcTest(HelloController.class)
@@ -38,53 +51,20 @@ public class HelloControllerTest {
 }
 ```
 
----
+#### 🧠 Explanation:
+
+| Annotation / Method  | Purpose                              |
+| -------------------- | ------------------------------------ |
+| `@WebMvcTest`        | Loads only the controller layer      |
+| `MockMvc`            | Simulates HTTP requests              |
+| `.perform(get(...))` | Sends a GET request                  |
+| `.andExpect(...)`    | Verifies status and response content |
 
 ---
 
-### ✅  Using MockMvc to Test Hello World Controller
+## ✅ Step 03: Create Service and Controller with Dependency
 
-Now that we have a basic controller, let’s write a test using **MockMvc** to simulate an HTTP request.
-
-#### 1. **Add the Test Class**
-
-```java
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.web.servlet.MockMvc;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-@WebMvcTest(HelloController.class)
-public class HelloControllerTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Test
-    public void testSayHello() throws Exception {
-        mockMvc.perform(get("/api/hello"))
-               .andExpect(status().isOk())
-               .andExpect(content().string("Hello, World!"));
-    }
-}
-```
-
-#### 2. **Explanation:**
-
-* `@WebMvcTest`: Loads only the web layer (controller).
-* `MockMvc`: Lets you send fake HTTP requests and verify responses.
-* `.perform(get(...))`: Simulates a GET request.
-* `.andExpect(...)`: Checks that the status is 200 OK and response body matches `"Hello, World!"`.
-
----
-
-
-
-
-#### 1. **Create a Service Class**
+### 🧩 1. Service Class
 
 ```java
 @Service
@@ -96,9 +76,7 @@ public class ItemService {
 }
 ```
 
----
-
-#### 2. **Create a Controller Class**
+### 🧩 2. Controller Class
 
 ```java
 @RestController
@@ -118,13 +96,10 @@ public class ItemController {
 }
 ```
 
----
+### 🔗 3. Run & Test Endpoint
 
-#### 3. **Run & Test the Endpoint**
-
-Go to:
-`http://localhost:8080/api/items/name`
-You should see:
+Visit: `http://localhost:8080/api/items/name`
+Output:
 
 ```
 Laptop
@@ -132,20 +107,9 @@ Laptop
 
 ---
 
-This sets the foundation for **mocking the service layer** in controller tests, which we’ll do in the next step.
+## ✅ Step 04: Unit Test with Mocked Service (Mockito)
 
----
-
-
----
-
-###  Unit Testing Item Controller and Basic JSON Assertions
-
-Now that we have an `ItemController` and `ItemService`, let’s write a **unit test** for the controller by **mocking the service** using **Mockito** and verifying the response.
-
----
-
-#### 1. **Add Unit Test for Controller**
+### 🧪 1. Test ItemController
 
 ```java
 @WebMvcTest(ItemController.class)
@@ -159,7 +123,6 @@ public class ItemControllerTest {
 
     @Test
     public void testGetItemName() throws Exception {
-        // Mock the service response
         Mockito.when(itemService.getItemName()).thenReturn("Laptop");
 
         mockMvc.perform(get("/api/items/name"))
@@ -169,23 +132,20 @@ public class ItemControllerTest {
 }
 ```
 
----
+#### 🧠 Key Concepts:
 
-#### ✅ What’s Happening:
-
-| Annotation       | Purpose                                         |
-| ---------------- | ----------------------------------------------- |
-| `@WebMvcTest`    | Loads only web layer (controllers, filters)     |
-| `@MockBean`      | Creates a mock version of `ItemService`         |
-| `Mockito.when()` | Defines return value when mock method is called |
-| `MockMvc`        | Sends a fake GET request to the controller      |
-| `.andExpect()`   | Verifies response status and content            |
+| Annotation / Method                 | Purpose                             |
+| ----------------------------------- | ----------------------------------- |
+| `@MockBean`                         | Injects mock of `ItemService`       |
+| `Mockito.when(...).thenReturn(...)` | Defines mock behavior               |
+| `MockMvc`                           | Sends request to controller         |
+| `jsonPath(...)` (see below)         | Used for JSON response verification |
 
 ---
 
-#### ✅ JSON Response (if returning a JSON object)
+### ✅ Bonus: JSON Response & Test
 
-If your controller returns a JSON:
+#### 🧩 Controller Example Returning JSON
 
 ```java
 @GetMapping("/info")
@@ -195,7 +155,7 @@ public ResponseEntity<Map<String, String>> getItemInfo() {
 }
 ```
 
-**Then test it like this:**
+#### 🧪 Test JSON Response
 
 ```java
 @Test
@@ -210,11 +170,11 @@ public void testGetItemInfo() throws Exception {
 }
 ```
 
+#### 🧠 Notes:
+
+* `jsonPath("$.name")` → access key inside JSON.
+* Works well for validating nested JSON responses too.
+
 ---
 
-🧪 `jsonPath("$.key")` is used to check values in JSON responses easily.
-
----
-
-
-
+Let me know if you'd like a Markdown file version or want to continue with the **Service layer testing** next.
