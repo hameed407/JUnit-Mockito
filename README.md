@@ -958,7 +958,7 @@ class ItemControllerAdvancedTest {
 ---
 
 
-**Integration Testing**
+# Integration Testing
 
 Let's now **convert everything into a full integration test** using `@SpringBootTest`, covering the **controller, service, and global exception handler**, with **real HTTP request/response** using `TestRestTemplate`.
 
