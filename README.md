@@ -1,4 +1,4 @@
-**3 main ways to test a Spring Boot application** 
+# 3 main ways to test a Spring Boot application
 
 ---
 
