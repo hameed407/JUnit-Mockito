@@ -44,6 +44,69 @@ TDD ensures better design, fewer bugs, and more confidence in refactoring.
 | **Repository**  | Use `@DataJpaTest` with H2 or other in-memory DBs                 |
 | **Entity**      | Only test if custom logic exists (e.g., validation methods)       |
 
+
+These are general testing practices in a **Spring Boot enterprise app** using **JUnit 5 and Mockito**, especially in a **Test-Driven Development (TDD)** setup.
+
+---
+
+### 🔹 1. **ServiceImpl (Service Implementation Class)**
+
+* ✅ **What to test?** Business logic inside the service methods.
+* 🧪 **How to test?** Unit tests with **Mockito** by mocking dependencies (e.g., DAO or repository).
+* 💡 Example:
+
+  ```java
+  @Mock
+  private UserRepository userRepository;
+
+  @InjectMocks
+  private UserServiceImpl userService;
+  ```
+
+---
+
+### 🔹 2. **DTO (Data Transfer Object)**
+
+* ✅ **What to test?** Only if DTOs contain **conversion logic** (like mapping between entity ↔ DTO).
+* 🧪 **How to test?** Unit test the conversion functions or utility classes.
+* ❌ If DTOs are just POJOs with getters/setters, no test needed.
+
+---
+
+### 🔹 3. **DAO (Data Access Object)**
+
+* ✅ **What to test?** Normally tested via **integration tests**, not unit tests.
+* 🧪 **Why?** DAOs are too close to the database; better to test them by connecting to an in-memory DB (like H2) or mocking DB behavior if needed.
+
+---
+
+### 🔹 4. **Repository (Spring Data JPA)**
+
+* ✅ **What to test?** Custom queries or any custom logic.
+* 🧪 **How to test?** Use `@DataJpaTest` with **H2 in-memory database** for fast, isolated testing of JPA behavior.
+* 💡 Spring automatically configures an embedded DB during `@DataJpaTest`.
+
+---
+
+### 🔹 5. **Entity**
+
+* ✅ **What to test?** Only if the entity has custom methods or validation logic.
+* ❌ No need to test simple `@Entity` classes that only have fields and annotations.
+
+---
+
+### Summary Table:
+
+| Layer           | Do You Test? | How?                     |
+| --------------- | ------------ | ------------------------ |
+| **ServiceImpl** | ✅ Yes        | Unit test with mocks     |
+| **DTO**         | ❌/✅ Maybe    | Test if it has logic     |
+| **DAO**         | ✅ Yes        | Integration test/mock DB |
+| **Repository**  | ✅ Yes        | `@DataJpaTest` + H2      |
+| **Entity**      | ❌/✅ Maybe    | Test if logic is present |
+
+---
+
 ---
 
 ### 📘 JUnit 5 – Essentials
