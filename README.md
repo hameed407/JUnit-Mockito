@@ -1185,42 +1185,61 @@ Let's now **convert everything into a full integration test** using `@SpringBoot
 ## ✅ Step-by-Step: Spring Boot Integration Test
 
 ---
+Here's a **reframed version** of your explanation **before and after integration testing** to clearly show the transition and improvements introduced with a full integration test setup using `@SpringBootTest`, `MockMvc`, and global exception handling.
 
-### ✅ 1. **Enable Integration Test with `@SpringBootTest`**
+---
+
+### 🔄 **Before Integration Testing (Unit & Web Layer Tests Only)**
+
+* ✅ Tests were limited to **individual layers** like the controller or service.
+* ✅ Used `@WebMvcTest` with `MockMvc` for controller tests only.
+* ❌ **Service** and **repository layers** were **mocked**, not tested together.
+* ❌ Global exception handler was not triggered fully in real request flow.
+* ❌ No real application context or full HTTP request lifecycle.
+
+---
+
+### ✅ **After: Full Spring Boot Integration Testing**
+
+We now use `@SpringBootTest` to launch the **entire Spring Boot context**, testing real beans and actual HTTP flow from controller to service to exception handler.
+
+---
+
+### ✅ **Step-by-Step Integration Test Setup**
+
+#### 1. Enable Integration Testing with `@SpringBootTest`
 
 ```java
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 public class ItemControllerIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ItemService itemService; // real service bean
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ItemService itemService;
+    @Autowired private ObjectMapper objectMapper;
 
     @BeforeEach
     void setup() {
         itemService.createItem(new Item(100L, "Keyboard"));
     }
+```
 
+#### 2. Integration Test Cases
+
+```java
     @Test
     void testGetItemById_success() throws Exception {
         mockMvc.perform(get("/api/items/100"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Keyboard"));
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.name").value("Keyboard"));
     }
 
     @Test
     void testGetItemById_notFound_shouldInvokeGlobalExceptionHandler() throws Exception {
         mockMvc.perform(get("/api/items/999"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Item with ID 999 not found"))
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.error").value("Not Found"));
+               .andExpect(status().isNotFound())
+               .andExpect(jsonPath("$.message").value("Item with ID 999 not found"))
+               .andExpect(jsonPath("$.status").value(404))
+               .andExpect(jsonPath("$.error").value("Not Found"));
     }
 
     @Test
@@ -1240,30 +1259,30 @@ public class ItemControllerIntegrationTest {
         itemService.createItem(new Item(300L, "Mouse"));
 
         mockMvc.perform(delete("/api/items/300"))
-                .andExpect(status().isNoContent());
+               .andExpect(status().isNoContent());
     }
 
     @Test
     void testDeleteItem_notFound_shouldReturn404() throws Exception {
         mockMvc.perform(delete("/api/items/9876"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Item with ID 9876 not found"));
+               .andExpect(status().isNotFound())
+               .andExpect(jsonPath("$.message").value("Item with ID 9876 not found"));
     }
 }
 ```
 
 ---
 
-### ✅ 2. Update `ItemServiceImpl` to throw exception on not found
+### ✅ 3. Update Service Layer to Throw Exceptions
 
-This is important so your `@ControllerAdvice` is triggered during integration tests:
+To trigger the `@ControllerAdvice`, ensure exceptions are thrown:
 
 ```java
 @Override
 public Optional<Item> getItemById(Long id) {
     return items.stream()
-            .filter(i -> i.getId().equals(id))
-            .findFirst();
+                .filter(i -> i.getId().equals(id))
+                .findFirst();
 }
 
 @Override
@@ -1286,9 +1305,34 @@ public boolean deleteItem(Long id) {
 
 ---
 
-### ✅ 3. Add Global Exception Handler (from before)
+### ✅ 4. Global Exception Handler
 
-Keep your `@RestControllerAdvice` active—it’ll automatically handle exceptions in integration tests.
+Your existing `@RestControllerAdvice` automatically handles exceptions during full integration tests—no changes needed:
+
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ItemNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(ItemNotFoundException ex) {
+        ErrorResponse error = new ErrorResponse(404, "Not Found", ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    // other exception handlers...
+}
+```
+
+---
+
+### ✅ Final Outcome
+
+* ✅ **Real HTTP requests** tested via `MockMvc` within Spring context.
+* ✅ Covers **controller + service + exception handler** together.
+* ✅ Ensures **end-to-end behavior** is validated.
+* ✅ Automatically verifies **error responses** from global exception handler.
+
+Let me know if you want the **same style** for other layers or test strategies like `TestRestTemplate` or database-backed tests (`@DataJpaTest`).
 
 ---
 
