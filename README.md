@@ -107,6 +107,161 @@ These are general testing practices in a **Spring Boot enterprise app** using **
 
 ---
 
+Great! You're testing a **Spring Boot application** with a **PostgreSQL database**, and your focus is on how to **test the DAO and Repository layers**.
+
+Let me break this down clearly:
+
+---
+
+## ✅ What You’re Testing:
+
+* **DAO Layer** (Custom interfaces or classes between service and repository)
+* **Repository Layer** (Spring Data JPA interfaces like `UserRepository extends JpaRepository<User, Long>`)
+
+---
+
+## 🧪 Goal:
+
+Test these layers in a way that **interacts with the actual database** — or a close simulation — to make sure queries work correctly.
+
+---
+
+## ✅ 3 Options to Test DAO/Repository in Spring Boot with PostgreSQL
+
+---
+
+### 🔹 **Option 1: `@DataJpaTest` + H2 In-Memory DB** (Quick but not PostgreSQL-specific)
+
+```java
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = Replace.ANY) // Replaces PostgreSQL with H2
+public class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testFindByEmail() {
+        User user = new User("john", "john@example.com");
+        userRepository.save(user);
+
+        Optional<User> found = userRepository.findByEmail("john@example.com");
+        assertTrue(found.isPresent());
+    }
+}
+```
+
+🔸 Use this if you’re not relying on PostgreSQL-specific SQL features.
+
+---
+
+### 🔹 **Option 2: `@DataJpaTest` + Real PostgreSQL DB** (Best for production-like behavior)
+
+#### ✅ Steps:
+
+1. Create a **test PostgreSQL DB** (`myapp_test`).
+2. Add a **`src/test/resources/application-test.yml`**:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/myapp_test
+    username: testuser
+    password: testpass
+  jpa:
+    hibernate:
+      ddl-auto: update
+  sql:
+    init:
+      mode: always
+```
+
+3. Annotate your test class:
+
+```java
+@DataJpaTest
+@ActiveProfiles("test")
+@AutoConfigureTestDatabase(replace = Replace.NONE) // Use real PostgreSQL
+public class UserRepositoryTest {
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testSaveAndFindUser() {
+        User user = new User("john", "john@example.com");
+        userRepository.save(user);
+
+        Optional<User> found = userRepository.findByEmail("john@example.com");
+        assertTrue(found.isPresent());
+    }
+}
+```
+
+✅ PostgreSQL-specific behavior (e.g., case sensitivity, JSONB fields) will now be properly tested.
+
+---
+
+### 🔹 **Option 3: Testcontainers (Spin up PostgreSQL in Docker for tests)**
+
+* **Most accurate & clean** for CI/CD pipelines
+* Isolated database for each test run
+
+#### Example:
+
+```java
+@Testcontainers
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = Replace.NONE)
+public class UserRepositoryTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13")
+        .withDatabaseName("testdb")
+        .withUsername("user")
+        .withPassword("pass");
+
+    @DynamicPropertySource
+    static void setDatasourceProps(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testPostgresQuery() {
+        User user = new User("john", "john@example.com");
+        userRepository.save(user);
+        assertEquals(1, userRepository.count());
+    }
+}
+```
+
+---
+
+## ✅ Summary Table
+
+| Approach                    | Accuracy | Speed     | Needs Docker? | Good for CI? |
+| --------------------------- | -------- | --------- | ------------- | ------------ |
+| `@DataJpaTest` + H2         | ❌ Medium | ✅ Fast    | ❌ No          | ✅ Yes        |
+| `@DataJpaTest` + PostgreSQL | ✅ High   | ❌ Slower  | ❌ No          | ✅ Yes        |
+| Testcontainers              | ✅ Best   | ❌ Slowest | ✅ Yes         | ✅ Best       |
+
+---
+
+## 🟢 My Suggestion for You:
+
+Since you're already using **PostgreSQL**, use this:
+
+* `@DataJpaTest` + PostgreSQL + `application-test.yml` + `@ActiveProfiles("test")`
+* OR Testcontainers if you want CI/CD-ready isolation.
+
+---
+
+
+
 ---
 
 ### 📘 JUnit 5 – Essentials
@@ -1343,6 +1498,467 @@ class ItemControllerIntegrationTest {
 }
 ```
 
+
+
+Great! You're testing a **Spring Boot application** with a **PostgreSQL database**, and your focus is on how to **test the DAO and Repository layers**.
+
+Let me break this down clearly:
+
+---
+
+## ✅ What You’re Testing:
+
+* **DAO Layer** (Custom interfaces or classes between service and repository)
+* **Repository Layer** (Spring Data JPA interfaces like `UserRepository extends JpaRepository<User, Long>`)
+
+---
+
+## 🧪 Goal:
+
+Test these layers in a way that **interacts with the actual database** — or a close simulation — to make sure queries work correctly.
+
+---
+
+## ✅ 3 Options to Test DAO/Repository in Spring Boot with PostgreSQL
+
+---
+
+### 🔹 **Option 1: `@DataJpaTest` + H2 In-Memory DB** (Quick but not PostgreSQL-specific)
+
+```java
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = Replace.ANY) // Replaces PostgreSQL with H2
+public class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testFindByEmail() {
+        User user = new User("john", "john@example.com");
+        userRepository.save(user);
+
+        Optional<User> found = userRepository.findByEmail("john@example.com");
+        assertTrue(found.isPresent());
+    }
+}
+```
+
+🔸 Use this if you’re not relying on PostgreSQL-specific SQL features.
+
+---
+
+### 🔹 **Option 2: `@DataJpaTest` + Real PostgreSQL DB** (Best for production-like behavior)
+
+#### ✅ Steps:
+
+1. Create a **test PostgreSQL DB** (`myapp_test`).
+2. Add a **`src/test/resources/application-test.yml`**:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/myapp_test
+    username: testuser
+    password: testpass
+  jpa:
+    hibernate:
+      ddl-auto: update
+  sql:
+    init:
+      mode: always
+```
+
+3. Annotate your test class:
+
+```java
+@DataJpaTest
+@ActiveProfiles("test")
+@AutoConfigureTestDatabase(replace = Replace.NONE) // Use real PostgreSQL
+public class UserRepositoryTest {
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testSaveAndFindUser() {
+        User user = new User("john", "john@example.com");
+        userRepository.save(user);
+
+        Optional<User> found = userRepository.findByEmail("john@example.com");
+        assertTrue(found.isPresent());
+    }
+}
+```
+
+✅ PostgreSQL-specific behavior (e.g., case sensitivity, JSONB fields) will now be properly tested.
+
+---
+
+### 🔹 **Option 3: Testcontainers (Spin up PostgreSQL in Docker for tests)**
+
+* **Most accurate & clean** for CI/CD pipelines
+* Isolated database for each test run
+
+#### Example:
+
+```java
+@Testcontainers
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = Replace.NONE)
+public class UserRepositoryTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13")
+        .withDatabaseName("testdb")
+        .withUsername("user")
+        .withPassword("pass");
+
+    @DynamicPropertySource
+    static void setDatasourceProps(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testPostgresQuery() {
+        User user = new User("john", "john@example.com");
+        userRepository.save(user);
+        assertEquals(1, userRepository.count());
+    }
+}
+```
+
+---
+
+## ✅ Summary Table
+
+| Approach                    | Accuracy | Speed     | Needs Docker? | Good for CI? |
+| --------------------------- | -------- | --------- | ------------- | ------------ |
+| `@DataJpaTest` + H2         | ❌ Medium | ✅ Fast    | ❌ No          | ✅ Yes        |
+| `@DataJpaTest` + PostgreSQL | ✅ High   | ❌ Slower  | ❌ No          | ✅ Yes        |
+| Testcontainers              | ✅ Best   | ❌ Slowest | ✅ Yes         | ✅ Best       |
+
+---
+
+## 🟢 My Suggestion for You:
+
+Since you're already using **PostgreSQL**, use this:
+
+* `@DataJpaTest` + PostgreSQL + `application-test.yml` + `@ActiveProfiles("test")`
+* OR Testcontainers if you want CI/CD-ready isolation.
+
+---
+
+Excellent question! You're asking:
+
+> "How do I test **DAO and Repository layers** in Spring Boot when using **SQL (like PostgreSQL)** vs **NoSQL (like MongoDB)**, especially when data is **unstructured**?"
+
+Let’s compare them and explain how testing works **for both types of databases** in Spring Boot applications:
+
+---
+
+## ✅ 1. **SQL (Structured Data – PostgreSQL, MySQL, etc.)**
+
+### 🔹 Tools You Use:
+
+* `@DataJpaTest`
+* H2 or PostgreSQL
+* Spring Data JPA
+* Testcontainers (optional)
+
+### 🔹 Testing Layers:
+
+| Layer      | How You Test                                                        |
+| ---------- | ------------------------------------------------------------------- |
+| DAO        | Integration test using `@DataJpaTest` with real DB                  |
+| Repository | Use `@DataJpaTest` + PostgreSQL OR in-memory DB (H2/Testcontainers) |
+
+---
+
+### 🔹 Example:
+
+```java
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = Replace.NONE)
+@ActiveProfiles("test")  // Use test DB config
+public class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testFindByEmail() {
+        userRepository.save(new User("Ali", "ali@mail.com"));
+        assertTrue(userRepository.findByEmail("ali@mail.com").isPresent());
+    }
+}
+```
+
+---
+
+## ✅ 2. **NoSQL – MongoDB (Unstructured/Semi-structured Data)**
+
+### 🔹 Tools You Use:
+
+* `@DataMongoTest`
+* Embedded MongoDB (via **Flapdoodle**) or Testcontainers
+* Spring Data MongoDB
+
+---
+
+### 🔹 Testing Layers:
+
+| Layer      | How You Test                                              |
+| ---------- | --------------------------------------------------------- |
+| DAO        | Use `@DataMongoTest` or mock if logic-heavy               |
+| Repository | Use `@DataMongoTest` + Embedded MongoDB or Testcontainers |
+
+---
+
+### 🔹 Option A: Embedded MongoDB using Flapdoodle (Common)
+
+```xml
+<!-- Dependency in pom.xml -->
+<dependency>
+  <groupId>de.flapdoodle.embed</groupId>
+  <artifactId>de.flapdoodle.embed.mongo</artifactId>
+  <scope>test</scope>
+</dependency>
+```
+
+```java
+@DataMongoTest
+public class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testInsertAndFind() {
+        User user = new User("Sara", "sara@mail.com");
+        userRepository.save(user);
+        Optional<User> found = userRepository.findByEmail("sara@mail.com");
+        assertTrue(found.isPresent());
+    }
+}
+```
+
+---
+
+### 🔹 Option B: Testcontainers for MongoDB
+
+```java
+@Testcontainers
+@DataMongoTest
+public class MongoRepoTest {
+
+    @Container
+    static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:6.0");
+
+    @DynamicPropertySource
+    static void setProps(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
+    }
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testMongoInsert() {
+        User user = new User("Fatima", "fatima@mail.com");
+        userRepository.save(user);
+        assertEquals(1, userRepository.count());
+    }
+}
+```
+
+---
+
+## ✅ Summary: SQL vs NoSQL Testing in Spring Boot
+
+| Feature/Layer   | SQL (PostgreSQL)                   | NoSQL (MongoDB)                              |
+| --------------- | ---------------------------------- | -------------------------------------------- |
+| Test annotation | `@DataJpaTest`                     | `@DataMongoTest`                             |
+| Test DB options | H2 / PostgreSQL / Testcontainers   | Embedded Mongo (Flapdoodle) / Testcontainers |
+| Repo testing    | JPA repositories                   | Mongo repositories                           |
+| Structured Data | Yes                                | No (flexible/unstructured)                   |
+| Extra setup     | Test DB profile, schema (optional) | Embedded Mongo or Docker Mongo setup         |
+
+---
+
+Perfect! Here's a complete, **working example** of a **Spring Boot JUnit 5 test** for a **repository using PostgreSQL** — great for realistic **integration testing** in enterprise apps.
+
+---
+
+## 🔧 Technologies:
+
+* Spring Boot
+* Spring Data JPA
+* PostgreSQL
+* JUnit 5
+* `@DataJpaTest`
+
+---
+
+## 📁 Structure Example:
+
+```
+com.example.demo
+├── entity
+│   └── User.java
+├── repository
+│   └── UserRepository.java
+├── DemoApplication.java
+└── UserRepositoryTest.java
+```
+
+---
+
+## 1️⃣ `User` Entity
+
+```java
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+import java.util.Objects;
+
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String email;
+
+    // Constructors
+    public User() {}
+    public User(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+
+    // Getters & Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    // equals and hashCode
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof User)) return false;
+        User user = (User) o;
+        return Objects.equals(id, user.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+}
+```
+
+---
+
+## 2️⃣ `UserRepository`
+
+```java
+package com.example.demo.repository;
+
+import com.example.demo.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByEmail(String email);
+}
+```
+
+---
+
+## 3️⃣ `application-test.yml` (in `src/test/resources`)
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/testdb
+    username: testuser
+    password: testpass
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  test:
+    database:
+      replace: none
+```
+
+> ✅ Make sure a test DB `testdb` exists and the user/password matches.
+
+---
+
+## 4️⃣ `UserRepositoryTest`
+
+```java
+package com.example.demo;
+
+import com.example.demo.entity.User;
+import com.example.demo.repository.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@DataJpaTest
+@ActiveProfiles("test")
+public class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void testSaveAndFindByEmail() {
+        User user = new User("Hamraz", "hamraz@example.com");
+        userRepository.save(user);
+
+        Optional<User> found = userRepository.findByEmail("hamraz@example.com");
+
+        assertTrue(found.isPresent());
+        assertEquals("Hamraz", found.get().getName());
+    }
+}
+```
+
+---
+
+## ✅ Result:
+
+* This test **uses your real PostgreSQL DB** (not H2).
+* It verifies `save()` and `findByEmail()` methods in your repository.
+* Uses `@DataJpaTest` to load only JPA components (fast and clean).
+
+---
+
+## 🔍 Final Notes:
+
+* You can create more tests for **custom JPQL or native queries** too.
+* If you want to **use Testcontainers**, I can give you that version as well — it's perfect for CI/CD pipelines.
+
 ---
 
 ## 🎉 What You Now Have:
@@ -1359,6 +1975,7 @@ class ItemControllerIntegrationTest {
   ✅ Full-stack integration tests with real persistence + error checks
 
 ---
+
 
 
 
